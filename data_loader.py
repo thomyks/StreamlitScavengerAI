@@ -1,14 +1,10 @@
-"""
-Data Loader Module - Component One
-Fast CSV processing with Polars for better performance than Pandas
-"""
-
 import polars as pl
 import os
 import time
 import random
+import tempfile
 from pathlib import Path
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict
 
 
 def format_duration(seconds: float) -> str:
@@ -125,27 +121,30 @@ def process_csv_file(file_path: str) -> pl.DataFrame:
 
 
 def load_data_file(uploaded_file) -> pl.DataFrame:
-    """Load data from Streamlit uploaded file using Polars"""
+    """Load data from Streamlit uploaded file using Polars (CSV only)"""
     try:
         if uploaded_file.name.endswith('.csv'):
             # For CSV files, use our optimized Polars loader
-            # Save uploaded file temporarily
-            temp_path = Path(f"/tmp/{uploaded_file.name}")
-            with open(temp_path, "wb") as f:
-                f.write(uploaded_file.getvalue())
+            # Save uploaded file temporarily with secure handling
+            with tempfile.NamedTemporaryFile(mode='wb', suffix='.csv', delete=False) as temp_file:
+                temp_file.write(uploaded_file.getvalue())
+                temp_path = temp_file.name
             
-            # Process with our optimized function
-            df = process_csv_file(str(temp_path))
-            
-            # Clean up temp file
-            os.unlink(temp_path)
-            
-            return df
+            try:
+                # Process with our optimized function
+                df = process_csv_file(temp_path)
+                return df
+            finally:
+                # Ensure cleanup even if processing fails
+                try:
+                    os.unlink(temp_path)
+                except OSError:
+                    pass  # File might already be deleted
         else:
-            # For Excel files, convert from pandas to polars
-            import pandas as pd
-            pandas_df = pd.read_excel(uploaded_file)
-            return pl.from_pandas(pandas_df)
+            # Only CSV files are supported
+            print(f"❌ Unsupported file format: {uploaded_file.name}")
+            print("📝 Only CSV files are supported for pure Polars processing")
+            return None
             
     except Exception as e:
         print(f"❌ Error loading file: {e}")

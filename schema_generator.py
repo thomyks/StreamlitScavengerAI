@@ -1,8 +1,3 @@
-"""
-Schema Generator Module - Component Three
-AI-powered SQL schema generation with Claude API
-"""
-
 import json
 import requests
 import time
@@ -14,18 +9,17 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# Claude API configuration
-CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY')
+# Claude API configuration - try Streamlit secrets first, then environment variables
+try:
+    import streamlit as st
+    CLAUDE_API_KEY = st.secrets["CLAUDE_API_KEY"]
+    print("✅ Using API key from Streamlit secrets")
+except (ImportError, FileNotFoundError, KeyError):
+    CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY')
+    if CLAUDE_API_KEY:
+        print("✅ Using API key from environment variables")
+
 CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
-
-# Validate API key is present
-if not CLAUDE_API_KEY:
-    raise ValueError(
-        "🔑 CLAUDE_API_KEY environment variable is not set!\n"
-        "Please set it using: export CLAUDE_API_KEY='your-api-key-here'\n"
-        "Or create a .env file with CLAUDE_API_KEY=your-api-key-here"
-    )
-
 
 def extract_column_samples(df: pl.DataFrame, sample_size: int = 5) -> Dict[str, List[Any]]:
     """Extract sample values from each column for LLM analysis"""
@@ -517,15 +511,11 @@ def generate_descriptions_only(df: pl.DataFrame, table_name: str, sample_size: i
     # Extract column samples
     column_samples = extract_column_samples(df, sample_size)
     
-    # Detect domain context for better prompting
-    domain_context = detect_business_domain(table_name)
-    
     # Create enhanced business-focused prompt
-    desc_prompt = f"""You are a senior business analyst and domain expert specializing in {domain_context}. Your task is to generate definitive, professional column descriptions that explain business value and operational significance.
+    desc_prompt = f"""You are a senior business analyst and domain expert. Your task is to generate definitive, professional column descriptions that explain business value and operational significance.
 
 ### Dataset Context:
 - Table: `{table_name}`
-- Domain: {domain_context}
 - Purpose: Generate business-focused metadata for stakeholders and analysts
 
 ### Column Analysis Rules:
@@ -535,8 +525,11 @@ def generate_descriptions_only(df: pl.DataFrame, table_name: str, sample_size: i
 4. **CONCISE**: 80-200 characters per description
 5. **ACTIONABLE**: Explain how this data supports business decisions
 
-### Domain-Specific Guidelines:
-{get_domain_guidelines(table_name)}
+### General Guidelines:
+- Focus on operational efficiency and decision-making support
+- Explain how data drives business processes and outcomes
+- Emphasize data quality importance for analytics and reporting
+- Connect technical data to business value and user needs
 
 ### Expected Output Format:
 {{
@@ -552,18 +545,18 @@ def generate_descriptions_only(df: pl.DataFrame, table_name: str, sample_size: i
 
 ### Business-Focused Examples:
 
-For SAP Sales Data:
-- VBELN → "Sales document number enabling order tracking and customer service inquiries"
-- WAERK → "Transaction currency determining pricing calculations and financial reporting"
-- NETWR → "Net order value for revenue recognition and commission calculations"
+For Sales Data:
+- ORDER_ID → "Order identifier enabling transaction tracking and customer service inquiries"
+- CURRENCY → "Transaction currency determining pricing calculations and financial reporting"
+- NET_VALUE → "Net order value for revenue recognition and performance analysis"
 
-For CRM Data:
-- CUST_ID → "Customer identifier enabling relationship tracking and service history access"
+For Customer Data:
+- CUSTOMER_ID → "Customer identifier enabling relationship tracking and service history access"
 - STATUS → "Account status controlling access permissions and service eligibility"
 
-For Financial Data:
-- AMOUNT → "Transaction value for accounting entries and financial statement preparation"
-- GL_ACCOUNT → "General ledger code for expense categorization and budget tracking"
+For Transaction Data:
+- AMOUNT → "Transaction value for accounting entries and financial analysis"
+- ACCOUNT_CODE → "Account classification code for expense categorization and budget tracking"
 
 ### Column Data to Analyze:
 """
@@ -600,7 +593,6 @@ Generate definitive business descriptions now:"""
         return result['descriptions']
     else:
         print("❌ Failed to generate descriptions")
-        print(f"Debug: Result keys: {list(result.keys()) if result else 'None'}")
         return {}
 
 
@@ -719,59 +711,116 @@ def generate_enhanced_schema_with_auto_batching(
         return ddl, enhanced_descriptions
 
 
-def detect_business_domain(table_name: str) -> str:
-    """Detect business domain from table name for better prompt context"""
-    table_lower = table_name.lower()
-    
-    if any(term in table_lower for term in ['sap', 'vbak', 'vbap', 'ekko', 'ekpo']):
-        return "SAP ERP systems"
-    elif any(term in table_lower for term in ['crm', 'customer', 'contact', 'lead']):
-        return "customer relationship management (CRM)"
-    elif any(term in table_lower for term in ['sales', 'order', 'invoice', 'billing']):
-        return "sales and distribution"
-    elif any(term in table_lower for term in ['finance', 'accounting', 'ledger', 'payment']):
-        return "financial management"
-    elif any(term in table_lower for term in ['inventory', 'warehouse', 'stock', 'material']):
-        return "inventory and supply chain management"
-    elif any(term in table_lower for term in ['hr', 'employee', 'payroll', 'staff']):
-        return "human resources management"
-    else:
-        return "business data management"
 
 
-def get_domain_guidelines(table_name: str) -> str:
-    """Get domain-specific guidelines for description generation"""
-    table_lower = table_name.lower()
+
+def generate_column_descriptions_with_business_context(
+    df: pl.DataFrame, 
+    table_name: str, 
+    sample_size: int = 5
+) -> Tuple[Dict[str, str], str]:
+    """
+    Generate intelligent business descriptions for columns using AI analysis 
+    of data patterns, column names, and sample values.
     
-    if any(term in table_lower for term in ['sap', 'vbak', 'vbap']):
-        return """
-For SAP fields:
-- Focus on business process flow (order-to-cash, procure-to-pay)
-- Explain impact on financial reporting and compliance
-- Mention integration points with other SAP modules
-- Use SAP terminology (document numbers, organizational units, etc.)
+    This function replicates the exact prompt logic from the streamlit UI
+    to maintain consistent behavior while centralizing business logic.
+    
+    Args:
+        df: Polars DataFrame to analyze
+        table_name: Name of the table/dataset for business context
+        sample_size: Number of sample values to analyze per column
+        
+    Returns:
+        Tuple of (descriptions_dict, error_message_or_none)
+    """
+    
+    try:
+        print(f"🔍 Generating business descriptions for {table_name}...")
+        
+        # Extract column samples (reusing existing function)
+        column_samples = extract_column_samples(df, sample_size)
+        print(f"✅ Extracted samples from {len(column_samples)} columns")
+        
+        # Build the exact same prompt as in the UI
+        business_domain = table_name.replace('_', ' ').replace('-', ' ')
+        
+        desc_prompt = f"""You are an experienced data analyst specializing in business intelligence and data architecture. Your expertise spans multiple domains including {business_domain} systems, and you excel at interpreting cryptic column names and data patterns.
+
+## Dataset Context
+Dataset: {table_name}
+Business Domain: {business_domain} system data
+
+## Few-Shot Examples
+Here are examples of high-quality column descriptions:
+
+Input:
+--- CUST_ID ---
+Sample Values: ['C001234', 'C005678', 'C009012']
+
+Output:
+"CUST_ID": "Customer identifier - unique alphanumeric code assigned to each customer account for tracking and reference purposes"
+
+Input: 
+--- TRANS_AMT ---
+Sample Values: [1250.75, 89.99, 2500.00]
+
+Output:
+"TRANS_AMT": "Transaction amount - monetary value of individual transactions recorded in base currency units"
+
+## Column Analysis
+Below are the actual columns from your dataset with sample values:
 """
-    elif any(term in table_lower for term in ['crm', 'customer']):
-        return """
-For CRM fields:
-- Emphasize customer relationship and service impact
-- Explain how data supports sales and marketing processes
-- Focus on customer experience and retention value
-- Mention data quality importance for customer insights
+        
+        # Add column samples exactly as in the UI
+        for col_name, samples in column_samples.items():
+            desc_prompt += f"""
+--- {col_name} ---
+Sample Values: {samples}
 """
-    elif any(term in table_lower for term in ['finance', 'accounting']):
-        return """
-For Financial fields:
-- Emphasize compliance and audit requirements
-- Explain impact on financial statements and reporting
-- Focus on control and risk management aspects
-- Mention regulatory and tax implications
-"""
-    else:
-        return """
-General business guidelines:
-- Focus on operational efficiency and decision-making support
-- Explain how data drives business processes and outcomes
-- Emphasize data quality importance for analytics and reporting
-- Connect technical data to business value and user needs
-"""
+        
+        # Add the exact same instructions as in the UI
+        desc_prompt += """
+
+## Instructions
+For each column above, generate a professional business description by:
+
+1. **Analyze name semantics**: Decode abbreviations, acronyms, and naming patterns
+2. **Examine value patterns**: Look at data types, formats, ranges, and structures
+3. **Apply business context**: Consider the domain and likely business processes
+4. **Synthesize insights**: Combine semantic and pattern analysis into clear business meaning
+
+## Output Requirements
+Provide your analysis in valid JSON format with exactly this structure:
+{
+  "descriptions": {
+    "column_name": "Professional business description (100-300 characters)"
+  }
+}
+
+## Quality Standards
+- Length: 100-300 characters per description
+- Tone: Professional, business-focused language
+- Content: Explain what the column represents and its business purpose
+- Clarity: Avoid technical jargon, use clear business terminology
+- Accuracy: Base descriptions on actual sample values and naming patterns
+
+Generate descriptions now:"""
+        
+        # Call Claude API using existing function
+        print("🤖 Calling Claude API for intelligent description generation...")
+        result = call_claude_api_robust(desc_prompt)
+        
+        if result and 'descriptions' in result:
+            descriptions = result['descriptions']
+            print(f"✅ Generated descriptions for {len(descriptions)} columns")
+            return descriptions, None
+        else:
+            error_msg = "Failed to generate descriptions. Please try again."
+            print(f"❌ {error_msg}")
+            return {}, error_msg
+            
+    except Exception as e:
+        error_msg = f"Error generating descriptions: {str(e)}"
+        print(f"❌ {error_msg}")
+        return {}, error_msg

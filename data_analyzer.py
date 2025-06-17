@@ -4,10 +4,15 @@ Comprehensive data quality analysis and descriptive statistics
 """
 
 import polars as pl
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Any, Union, Tuple
+
+# Constants
+HIGH_NULL_THRESHOLD = 50.0
+OUTLIER_IQR_MULTIPLIER = 1.5
+TOP_VALUES_LIMIT = 5
 
 
-def analyze_dataset_structure_and_nulls(df: pl.DataFrame, name: str) -> Dict:
+def analyze_dataset_structure_and_nulls(df: pl.DataFrame, name: str) -> Dict[str, Any]:
     """Comprehensive analysis of dataset structure and data quality"""
     
     analysis_results = {
@@ -99,7 +104,7 @@ def analyze_dataset_structure_and_nulls(df: pl.DataFrame, name: str) -> Dict:
     return analysis_results
 
 
-def analyze_numeric_columns(df: pl.DataFrame, numeric_cols: List[str]) -> Dict:
+def analyze_numeric_columns(df: pl.DataFrame, numeric_cols: List[str]) -> Dict[str, Any]:
     """Detailed analysis of numeric columns"""
     
     print(f"\n📈 NUMERIC COLUMNS STATISTICS ({len(numeric_cols)} columns)")
@@ -156,7 +161,7 @@ def analyze_numeric_columns(df: pl.DataFrame, numeric_cols: List[str]) -> Dict:
     return numeric_analysis
 
 
-def analyze_string_columns(df: pl.DataFrame, string_cols: List[str]) -> Dict:
+def analyze_string_columns(df: pl.DataFrame, string_cols: List[str]) -> Dict[str, Dict[str, Any]]:
     """Detailed analysis of string columns"""
     
     print(f"\n📝 STRING COLUMNS ANALYSIS ({len(string_cols)} columns)")
@@ -206,97 +211,12 @@ def analyze_string_columns(df: pl.DataFrame, string_cols: List[str]) -> Dict:
     return string_analysis
 
 
-def get_column_insights(df: pl.DataFrame, column_name: str) -> Dict:
-    """Get detailed insights for a specific column"""
-    
-    if column_name not in df.columns:
-        return {'error': f'Column {column_name} not found'}
-    
-    col_data = df[column_name]
-    insights = {
-        'column_name': column_name,
-        'dtype': str(col_data.dtype),
-        'total_count': df.shape[0],
-        'null_count': col_data.null_count(),
-        'non_null_count': df.shape[0] - col_data.null_count(),
-        'unique_count': col_data.n_unique()
-    }
-    
-    # Add type-specific insights
-    if col_data.dtype in [pl.Int64, pl.Int32, pl.Float64, pl.Float32]:
-        insights.update({
-            'min': col_data.min(),
-            'max': col_data.max(),
-            'mean': col_data.mean(),
-            'median': col_data.median(),
-            'std': col_data.std()
-        })
-    elif col_data.dtype == pl.Utf8:
-        non_null_data = col_data.drop_nulls()
-        if non_null_data.len() > 0:
-            lengths = non_null_data.str.len_chars()
-            insights.update({
-                'min_length': lengths.min(),
-                'max_length': lengths.max(),
-                'avg_length': lengths.mean()
-            })
-    
-    return insights
-
-
 def generate_summary_statistics(df: pl.DataFrame) -> pl.DataFrame:
     """Generate comprehensive summary statistics"""
     
     # Use polars describe method for comprehensive stats
     summary = df.describe()
     return summary
-
-
-def calculate_correlation_matrix(df: pl.DataFrame) -> pl.DataFrame:
-    """Calculate correlation matrix for numeric columns"""
-    
-    # Select only numeric columns
-    numeric_cols = [col for col in df.columns if df[col].dtype in [pl.Int64, pl.Int32, pl.Float64, pl.Float32]]
-    
-    if not numeric_cols:
-        return None
-    
-    numeric_df = df.select(numeric_cols)
-    
-    # Calculate correlation matrix using polars
-    # Note: Polars doesn't have built-in correlation, so we'll use a workaround
-    correlation_data = {}
-    
-    for col1 in numeric_cols:
-        correlations = []
-        for col2 in numeric_cols:
-            if col1 == col2:
-                correlations.append(1.0)
-            else:
-                # Calculate Pearson correlation manually
-                x = numeric_df[col1].drop_nulls()
-                y = numeric_df[col2].drop_nulls()
-                
-                if len(x) > 1 and len(y) > 1:
-                    # Simple correlation calculation
-                    mean_x = x.mean()
-                    mean_y = y.mean()
-                    
-                    numerator = ((x - mean_x) * (y - mean_y)).sum()
-                    denominator = (((x - mean_x) ** 2).sum() * ((y - mean_y) ** 2).sum()) ** 0.5
-                    
-                    if denominator != 0:
-                        corr = numerator / denominator
-                    else:
-                        corr = 0.0
-                else:
-                    corr = 0.0
-                    
-                correlations.append(corr)
-        
-        correlation_data[col1] = correlations
-    
-    return pl.DataFrame(correlation_data)
 
 
 def analyze_missing_data(df: pl.DataFrame) -> pl.DataFrame:

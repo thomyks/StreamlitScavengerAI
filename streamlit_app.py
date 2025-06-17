@@ -1,153 +1,45 @@
+# Import necessary libraries
 import streamlit as st
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from schema_generator import call_claude_api_robust
-
-def get_current_claude_model():
-    """Get the name of the current Claude model being used"""
-    # Extract default model from call_claude_api_robust function signature
-    model_info = call_claude_api_robust.__defaults__[1]  # Default model parameter
-    
-    # Format the model name for display
-    if "claude-sonnet-4" in model_info:
-        return "Claude Sonnet 4 (May 2025)", "🚀"
-    elif "claude-3-sonnet" in model_info:
-        return "Claude 3 Sonnet", "⚡"
-    elif "claude-3-opus" in model_info:
-        return "Claude 3 Opus", "🔥"
-    elif "claude-3-haiku" in model_info:
-        return "Claude 3 Haiku", "💨"
-    else:
-        return model_info, "🤖"
-
-# Import our modular components
-from data_loader import load_data_file, format_duration
+import json
+import polars as pl
+from data_loader import load_data_file
 from ui_components import show_dataset_info
 from data_analyzer import (
     analyze_dataset_structure_and_nulls, 
     generate_summary_statistics,
-    calculate_correlation_matrix,
-    analyze_missing_data,
-    get_column_insights
+    analyze_missing_data
 )
 from schema_generator import (
     generate_schema_with_auto_batching,
     test_claude_connection,
     format_for_copy_paste,
-    generate_descriptions_only,
     generate_enhanced_schema_with_descriptions,
     generate_enhanced_schema_with_auto_batching,
     extract_column_samples,
-    call_claude_api_robust
+    call_claude_api_robust,
+    generate_column_descriptions_with_business_context
 )
 from visualization_utils import (
     polars_to_pandas_for_viz,
-    create_distribution_plot,
-    create_scatter_plot,
-    create_missing_data_chart,
-    create_correlation_heatmap,
-    create_value_counts_charts
+    create_missing_data_chart
 )
+from style_utils import apply_custom_styles
+
+def get_current_claude_model():
+    """Get the name of the current Claude model being used"""
+    return "Claude Sonnet 4 (May 2025)" 
+
 
 # Page Configuration
 st.set_page_config(
-    page_title="ScavengerAI",
+    page_title="Scavenger AI",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 3rem;
-        font-weight: bold;
-        color: #FF4B4B;
-        text-align: center;
-        margin-bottom: 1rem;
-    }
-    .sub-header {
-        font-size: 1.2rem;
-        color: #666;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .stButton > button {
-        width: 100%;
-    }
-    .metric-container {
-        background-color: #f8f9fa;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #FF4B4B;
-    }
-    
-    /* Custom styling for sidebar navigation */
-    .nav-item {
-        padding: 0.5rem 0;
-    }
-    
-    /* Radio button styling */
-    .stRadio > div {
-        flex-direction: column;
-    }
-    
-    .stRadio > div > label {
-        background-color: #2E4057;
-        color: white;
-        padding: 1rem 1rem;
-        margin: 0.25rem 0;
-        border-radius: 0.5rem;
-        border: 2px solid #3B4D61;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-weight: 500;
-        min-height: 60px;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        box-sizing: border-box;
-        text-align: left;
-    }
-    
-    .stRadio > div > label:hover {
-        background-color: #3B4D61;
-        border-color: #FF4B4B;
-        transform: translateX(5px);
-    }
-    
-    .stRadio > div > label[data-checked="true"] {
-        background-color: #FF4B4B;
-        color: white;
-        border-color: #FF4B4B;
-        box-shadow: 0 2px 4px rgba(255, 75, 75, 0.3);
-    }
-    
-    /* Additional sidebar styling */
-    section[data-testid="stSidebar"] {
-        background-color: #1E2A38;
-    }
-    
-    section[data-testid="stSidebar"] .css-17ziqus {
-        color: white !important;
-    }
-    
-    /* Make sure the sidebar text is visible */
-    section[data-testid="stSidebar"] div.stMarkdown, 
-    section[data-testid="stSidebar"] h1,
-    section[data-testid="stSidebar"] h2,
-    section[data-testid="stSidebar"] h3,
-    section[data-testid="stSidebar"] h4,
-    section[data-testid="stSidebar"] h5,
-    section[data-testid="stSidebar"] h6,
-    section[data-testid="stSidebar"] p {
-        color: white !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Apply custom styles from external CSS file
+apply_custom_styles()
 
 def main():
     # Initialize session state FIRST
@@ -163,17 +55,17 @@ def main():
         st.session_state.generated_schemas = {}
     
     # Get current model information
-    model_name, model_icon = get_current_claude_model()
+    model_name = get_current_claude_model()
     
     # Header
-    st.markdown('<div class="main-header">Scavenger AI</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">From CSV to Schema in Seconds</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">From CSV to Schema in Seconds</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Automated Schema & Column Documentation Generator for MySQL</div>', unsafe_allow_html=True)
     
     # Model indicator
     st.markdown(
         f"""<div style='background-color: #3B4D61; padding: 8px 15px; border-radius: 5px; 
         display: inline-block; color: white; font-size: 0.8rem; margin-bottom: 20px;'>
-        {model_icon} <b>Powered by:</b> {model_name}</div>""", 
+        <b>Powered by:</b> {model_name}</div>""", 
         unsafe_allow_html=True
     )
     
@@ -215,7 +107,7 @@ def main():
     # Add some space and info
     st.sidebar.markdown("---")
     st.sidebar.markdown("### ℹ️ About")
-    st.sidebar.info(f"**Scavenger AI** uses Polars for fast data processing and **{model_icon} {model_name}** for intelligent schema generation.")
+    st.sidebar.info(f"**Scavenger AI** uses Polars for fast data processing and **{model_name}** for intelligent schema generation.")
 
     # COMPONENT ONE: Data Loading
     if page == "📤 Data Loading":
@@ -241,7 +133,7 @@ def main():
             uploaded_file = st.file_uploader(
                 "Choose your data file",
                 type=['csv'],
-                help="Supported formats: CSV, Excel (powered by Polars for fast processing)"
+                help="Supported formats: CSV only (powered by Polars for fast processing)"
             )
             
             if uploaded_file is not None:
@@ -285,7 +177,7 @@ def main():
                 "Choose multiple data files",
                 type=['csv'],
                 accept_multiple_files=True,
-                help="Supported formats: CSV, Excel (powered by Polars for fast processing)"
+                help="Supported formats: CSV only (powered by Polars for fast processing)"
             )
             
             if uploaded_files:
@@ -369,7 +261,7 @@ def main():
                 # Use our enhanced data analyzer
                 analysis_results = analyze_dataset_structure_and_nulls(data, st.session_state.filename or "Dataset")
                 
-                # Create a data types summary
+                # Create a data types summary using Polars
                 dtype_data = []
                 for col, info in analysis_results['columns'].items():
                     dtype_data.append({
@@ -380,8 +272,10 @@ def main():
                         'Null %': round(info.get('null_percentage', 0), 2)
                     })
                 
-                dtype_df = pd.DataFrame(dtype_data)
-                st.dataframe(dtype_df, use_container_width=True)
+                dtype_df = pl.DataFrame(dtype_data)
+                # Convert to pandas only for display
+                dtype_pandas = polars_to_pandas_for_viz(dtype_df)
+                st.dataframe(dtype_pandas, use_container_width=True)
         
         with tab3:
             st.subheader("Missing Data Analysis")
@@ -421,13 +315,15 @@ def main():
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("**🧠 Business Context for AI**")
+            # Auto-infer table name from filename
+            default_table_name = st.session_state.filename.replace('.csv', '').replace('.CSV', '') if st.session_state.filename else "my_table"
             table_name = st.text_input(
                 "Table/System Name", 
-                value="my_table", 
-                help="🧠 This helps Claude AI understand your business domain for better descriptions",
+                value=default_table_name, 
+                help="🧠 Auto-inferred from filename. This helps Claude AI understand your business domain for better descriptions",
                 key="desc_table_name"
             )
-            st.caption("💡 More specific names = better AI descriptions")
+            st.caption("💡 Auto-filled from CSV filename - edit if needed")
             
         with col2:
             st.markdown("**📊 Sample Analysis Size**")
@@ -449,7 +345,7 @@ def main():
         
         # Handle test connection
         if test_connection:
-            model_name, _ = get_current_claude_model()
+            model_name = get_current_claude_model()
             with st.spinner(f"Testing {model_name} API connection..."):
                 connection_ok = test_claude_connection()
                 if connection_ok:
@@ -466,127 +362,49 @@ def main():
                 return
                 
             with st.spinner("🔍 Analyzing column patterns and generating descriptions..."):
-                try:
-                    # Extract column samples
-                    column_samples = extract_column_samples(data, sample_size)
-                    st.success(f"✅ Extracted samples from {len(column_samples)} columns")
+                # Use centralized business logic from schema_generator.py
+                descriptions, error = generate_column_descriptions_with_business_context(
+                    data, table_name, sample_size
+                )
+                
+                if descriptions and not error:
+                    # Store descriptions in session state for use in schema generation
+                    st.session_state.generated_descriptions[st.session_state.filename] = descriptions
                     
-                    # Show sample preview
-                    with st.expander("📋 Column Samples Preview"):
-                        for col, samples in list(column_samples.items())[:5]:  # Show first 5
-                            st.write(f"**{col}:** {samples}")
-                        if len(column_samples) > 5:
-                            st.write(f"... and {len(column_samples) - 5} more columns")
+                    st.success(f"✅ Generated descriptions for {len(descriptions)} columns!")
                     
-                    # Prepare enhanced prompt for descriptions with better structure
-                    desc_prompt = f"""You are an experienced data analyst specializing in business intelligence and data architecture. Your expertise spans multiple domains including {table_name.replace('_', ' ').replace('-', ' ')} systems, and you excel at interpreting cryptic column names and data patterns.
-
-## Dataset Context
-Dataset: {table_name}
-Business Domain: {table_name.replace('_', ' ').replace('-', ' ')} system data
-
-## Few-Shot Examples
-Here are examples of high-quality column descriptions:
-
-Input:
---- CUST_ID ---
-Sample Values: ['C001234', 'C005678', 'C009012']
-
-Output:
-"CUST_ID": "Customer identifier - unique alphanumeric code assigned to each customer account for tracking and reference purposes"
-
-Input: 
---- TRANS_AMT ---
-Sample Values: [1250.75, 89.99, 2500.00]
-
-Output:
-"TRANS_AMT": "Transaction amount - monetary value of individual transactions recorded in base currency units"
-
-## Column Analysis
-Below are the actual columns from your dataset with sample values:
-"""
+                    # Display results in tabs
+                    tab1, tab2, tab3 = st.tabs(["📝 Descriptions", "📋 Table Format", "📄 Copy-Paste"])
                     
-                    for col_name, samples in column_samples.items():
-                        desc_prompt += f"""
---- {col_name} ---
-Sample Values: {samples}
-"""
+                    with tab1:
+                        st.subheader("Generated Column Descriptions")
+                        for col, desc in descriptions.items():
+                            st.write(f"**{col}:** {desc}")
                     
-                    desc_prompt += """
-
-## Instructions
-For each column above, generate a professional business description by:
-
-1. **Analyze name semantics**: Decode abbreviations, acronyms, and naming patterns
-2. **Examine value patterns**: Look at data types, formats, ranges, and structures
-3. **Apply business context**: Consider the domain and likely business processes
-4. **Synthesize insights**: Combine semantic and pattern analysis into clear business meaning
-
-## Output Requirements
-Provide your analysis in valid JSON format with exactly this structure:
-{
-  "descriptions": {
-    "column_name": "Professional business description (100-300 characters)"
-  }
-}
-
-## Quality Standards
-- Length: 100-300 characters per description
-- Tone: Professional, business-focused language
-- Content: Explain what the column represents and its business purpose
-- Clarity: Avoid technical jargon, use clear business terminology
-- Accuracy: Base descriptions on actual sample values and naming patterns
-
-Generate descriptions now:"""
+                    with tab2:
+                        st.subheader("Table Format")
+                        desc_data = [
+                            {"Column": col, "Description": desc} 
+                            for col, desc in descriptions.items()
+                        ]
+                        desc_df = pl.DataFrame(desc_data)
+                        desc_pandas = polars_to_pandas_for_viz(desc_df)
+                        st.dataframe(desc_pandas, use_container_width=True)
                     
-                    # Call Claude API
-                    model_name, model_icon = get_current_claude_model()
-                    st.info(f"{model_icon} Calling {model_name} for intelligent description generation...")
-                    result = call_claude_api_robust(desc_prompt)
-                    
-                    if result and 'descriptions' in result:
-                        descriptions = result['descriptions']
+                    with tab3:
+                        st.subheader("Copy-Paste Format")
+                        formatted_desc = json.dumps(descriptions, indent=2)
+                        st.code(formatted_desc, language='json')
                         
-                        # Store descriptions in session state for use in schema generation
-                        st.session_state.generated_descriptions[st.session_state.filename] = descriptions
-                        
-                        st.success(f"✅ Generated descriptions for {len(descriptions)} columns!")
-                        st.info("💡 These descriptions will be used to enhance schema generation in the Schema Generation component!")
-                        
-                        # Display results in tabs
-                        tab1, tab2, tab3 = st.tabs(["📝 Descriptions", "📋 Table Format", "📄 Copy-Paste"])
-                        
-                        with tab1:
-                            st.subheader("Generated Column Descriptions")
-                            for col, desc in descriptions.items():
-                                st.write(f"**{col}:** {desc}")
-                        
-                        with tab2:
-                            st.subheader("Table Format")
-                            desc_df = pd.DataFrame([
-                                {"Column": col, "Description": desc} 
-                                for col, desc in descriptions.items()
-                            ])
-                            st.dataframe(desc_df, use_container_width=True)
-                        
-                        with tab3:
-                            st.subheader("Copy-Paste Format")
-                            import json
-                            formatted_desc = json.dumps(descriptions, indent=2)
-                            st.code(formatted_desc, language='json')
-                            
-                            # Download option
-                            st.download_button(
-                                label="📥 Download Descriptions (JSON)",
-                                data=formatted_desc,
-                                file_name=f"{table_name}_descriptions.json",
-                                mime="application/json"
-                            )
-                    else:
-                        st.error("❌ Failed to generate descriptions. Please try again.")
-                        
-                except Exception as e:
-                    st.error(f"❌ Error generating descriptions: {str(e)}")
+                        # Download option
+                        st.download_button(
+                            label="📥 Download Descriptions (JSON)",
+                            data=formatted_desc,
+                            file_name=f"{table_name}_descriptions.json",
+                            mime="application/json"
+                        )
+                else:
+                    st.error(f"❌ {error}")
 
     # COMPONENT FOUR: Schema Generation  
     elif page == "🗄️ Schema Generation":
@@ -607,13 +425,15 @@ Generate descriptions now:"""
         col1, col2, col3 = st.columns(3)
         with col1:
             st.markdown("**🧠 Business Context for AI**")
+            # Auto-infer table name from filename
+            default_table_name = st.session_state.filename.replace('.csv', '').replace('.CSV', '') if st.session_state.filename else "my_table"
             table_name = st.text_input(
                 "Table/System Name", 
-                value="my_table", 
-                help="🧠 This helps Claude AI understand your business domain for better SQL type inference",
+                value=default_table_name, 
+                help="🧠 Auto-inferred from filename. This helps Claude AI understand your business domain for better SQL type inference",
                 key="schema_table_name"
             )
-            st.caption("💡 Same context improves schema quality")
+            st.caption("💡 Auto-filled from CSV filename - edit if needed")
         with col2:
             sample_size = st.slider("Sample Size", min_value=3, max_value=10, value=5, 
                                    help="Number of sample values to analyze per column")
@@ -706,13 +526,14 @@ Generate descriptions now:"""
                             
                             # Parse and display as table
                             try:
-                                import json
                                 desc_data = json.loads(descriptions)
-                                desc_df = pd.DataFrame([
+                                desc_df_data = [
                                     {"Column": col, "Description": desc} 
                                     for col, desc in desc_data.items()
-                                ])
-                                st.dataframe(desc_df, use_container_width=True)
+                                ]
+                                desc_df = pl.DataFrame(desc_df_data)
+                                desc_pandas = polars_to_pandas_for_viz(desc_df)
+                                st.dataframe(desc_pandas, use_container_width=True)
                                 
                                 # Download descriptions
                                 st.download_button(
@@ -792,18 +613,15 @@ Generate descriptions now:"""
                             except:
                                 pass
                     else:
-                        st.error("❌ Failed to generate schema. Please try again.")
+                        st.error("Failed to generate schema. Please try again.")
                         if ddl.startswith("-- Error:"):
                             st.error(ddl)
                         
                 except Exception as e:
-                    st.error(f"❌ Error generating schema: {str(e)}")
+                    st.error(f"Error generating schema: {str(e)}")
                     import traceback
                     with st.expander("Debug Information"):
                         st.code(traceback.format_exc())
-
-
-
     # Footer
     st.markdown("---")
 

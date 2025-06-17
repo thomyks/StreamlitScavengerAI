@@ -1,0 +1,92 @@
+/* Scavenger AI - Custom Styles */
+
+.main-header {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #FF4B4B;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.sub-header {
+    font-size: 1.2rem;
+    color: #666;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+/* Button Styling */
+.stButton > button {
+    width: 100%;
+}
+
+/* Metric Container */
+.metric-container {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border-left: 4px solid #FF4B4B;
+}
+
+/* Navigation Styling */
+.nav-item {
+    padding: 0.5rem 0;
+}
+
+/* Radio Button Styling */
+.stRadio > div {
+    flex-direction: column;
+}
+
+.stRadio > div > label {
+    background-color: #2E4057;
+    color: white;
+    padding: 1rem 1rem;
+    margin: 0.25rem 0;
+    border-radius: 0.5rem;
+    border: 2px solid #3B4D61;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    min-height: 60px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    box-sizing: border-box;
+    text-align: left;
+}
+
+.stRadio > div > label:hover {
+    background-color: #3B4D61;
+    border-color: #FF4B4B;
+    transform: translateX(5px);
+}
+
+.stRadio > div > label[data-checked="true"] {
+    background-color: #FF4B4B;
+    color: white;
+    border-color: #FF4B4B;
+    box-shadow: 0 2px 4px rgba(255, 75, 75, 0.3);
+}
+
+/* Sidebar Styling */
+section[data-testid="stSidebar"] {
+    background-color: #1E2A38;
+}
+
+section[data-testid="stSidebar"] .css-17ziqus {
+    color: white !important;
+}
+
+/* Sidebar Text Visibility */
+section[data-testid="stSidebar"] div.stMarkdown, 
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] h4,
+section[data-testid="stSidebar"] h5,
+section[data-testid="stSidebar"] h6,
+section[data-testid="stSidebar"] p {
+    color: white !important;
+}
