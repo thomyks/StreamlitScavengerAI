@@ -1,9 +1,7 @@
-"""
-Data Analysis Module - Component Two
-Comprehensive data quality analysis and descriptive statistics
-"""
-
 import polars as pl
+import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
 from typing import Dict, List, Optional, Any, Union, Tuple
 
 # Constants
@@ -237,3 +235,114 @@ def analyze_missing_data(df: pl.DataFrame) -> pl.DataFrame:
     
     missing_df = pl.DataFrame(missing_data)
     return missing_df.sort('Missing_Count', descending=True)
+
+# =============================================================================
+# UI and Visualization Utility Functions
+# =============================================================================
+
+def polars_to_pandas_for_viz(df: pl.DataFrame):
+    """Convert Polars DataFrame to Pandas for visualization compatibility"""
+    return df.to_pandas()
+
+
+def show_dataset_info(data, filename, show_preview=False):
+    """Display dataset information in Streamlit UI"""
+    if data is None or filename is None:
+        st.warning("⚠️ No dataset loaded. Please upload a file first.")
+        return False
+    
+    # Dataset info header
+    st.markdown(f"### 📊 Current Dataset: `{filename}`")
+    
+    # Metrics
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("📝 Rows", f"{data.shape[0]:,}")
+    with col2:
+        st.metric("📊 Columns", f"{data.shape[1]:,}")
+    with col3:
+        st.metric("💾 Memory", f"{data.estimated_size('mb'):.1f} MB")
+    
+    # Optional preview
+    if show_preview:
+        st.markdown("#### 👁️ Data Preview")
+        display_data = polars_to_pandas_for_viz(data)
+        st.dataframe(display_data.head(5), use_container_width=True)
+    
+    return True
+
+
+def create_missing_data_chart(df: pl.DataFrame):
+    """Create an interactive missing data visualization"""
+    # Calculate missing data percentages
+    missing_data = []
+    for col in df.columns:
+        missing_count = df[col].null_count()
+        missing_pct = (missing_count / df.shape[0]) * 100
+        missing_data.append({
+            'Column': col,
+            'Missing_Percentage': missing_pct,
+            'Missing_Count': missing_count
+        })
+    
+    # Convert to pandas for plotting
+    missing_df = pl.DataFrame(missing_data).to_pandas()
+    missing_df = missing_df.sort_values('Missing_Percentage', ascending=False)
+    
+    # Determine layout based on number of columns
+    num_columns = len(df.columns)
+    
+    if num_columns > 20:
+        # Horizontal bar chart for many columns
+        fig = px.bar(
+            missing_df,
+            x='Missing_Percentage',
+            y='Column',
+            orientation='h',
+            title=f'Missing Data Analysis ({num_columns} columns)',
+            labels={'Missing_Percentage': 'Missing Data (%)', 'Column': 'Columns'},
+            color='Missing_Percentage',
+            color_continuous_scale='Reds',
+            height=max(400, num_columns * 20)
+        )
+        fig.update_layout(
+            yaxis={'categoryorder': 'total ascending'},
+            showlegend=False
+        )
+    else:
+        # Vertical bar chart for fewer columns
+        fig = px.bar(
+            missing_df,
+            x='Column',
+            y='Missing_Percentage',
+            title=f'Missing Data Analysis ({num_columns} columns)',
+            labels={'Missing_Percentage': 'Missing Data (%)', 'Column': 'Columns'},
+            color='Missing_Percentage',
+            color_continuous_scale='Reds'
+        )
+        fig.update_layout(
+            xaxis_tickangle=-45,
+            showlegend=False
+        )
+    
+    # Add annotations for high missing values
+    for idx, row in missing_df.iterrows():
+        if row['Missing_Percentage'] > 50:
+            if num_columns > 20:
+                fig.add_annotation(
+                    x=row['Missing_Percentage'],
+                    y=row['Column'],
+                    text=f"{row['Missing_Percentage']:.1f}%",
+                    showarrow=True,
+                    arrowhead=2
+                )
+            else:
+                fig.add_annotation(
+                    x=row['Column'],
+                    y=row['Missing_Percentage'],
+                    text=f"{row['Missing_Percentage']:.1f}%",
+                    showarrow=True,
+                    arrowhead=2
+                )
+    
+    return fig

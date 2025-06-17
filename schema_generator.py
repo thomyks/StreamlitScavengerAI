@@ -794,12 +794,12 @@ For each column above, generate a professional business description by:
 Provide your analysis in valid JSON format with exactly this structure:
 {
   "descriptions": {
-    "column_name": "Professional business description (100-300 characters)"
+    "column_name": "Professional business description (100-400 characters)"
   }
 }
 
 ## Quality Standards
-- Length: 100-300 characters per description
+- Length: 100-400 characters per description
 - Tone: Professional, business-focused language
 - Content: Explain what the column represents and its business purpose
 - Clarity: Avoid technical jargon, use clear business terminology

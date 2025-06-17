@@ -3,11 +3,13 @@ import streamlit as st
 import json
 import polars as pl
 from data_loader import load_data_file
-from ui_components import show_dataset_info
 from data_analyzer import (
     analyze_dataset_structure_and_nulls, 
     generate_summary_statistics,
-    analyze_missing_data
+    analyze_missing_data,
+    show_dataset_info,
+    polars_to_pandas_for_viz,
+    create_missing_data_chart
 )
 from schema_generator import (
     generate_schema_with_auto_batching,
@@ -18,10 +20,6 @@ from schema_generator import (
     extract_column_samples,
     call_claude_api_robust,
     generate_column_descriptions_with_business_context
-)
-from visualization_utils import (
-    polars_to_pandas_for_viz,
-    create_missing_data_chart
 )
 from style_utils import apply_custom_styles
 
@@ -58,7 +56,7 @@ def main():
     model_name = get_current_claude_model()
     
     # Header
-    st.markdown('<div class="main-header">From CSV to Schema in Seconds</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Scavenger AI: From CSV to Schema in Seconds</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Automated Schema & Column Documentation Generator for MySQL</div>', unsafe_allow_html=True)
     
     # Model indicator
