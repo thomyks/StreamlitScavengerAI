@@ -21,8 +21,8 @@ A powerful AI-driven application that automatically analyzes datasets and genera
 | **Frontend** | Streamlit | 1.45.1 |
 | **Data Processing** | Polars | 1.30.0 |
 | **Visualization** | Plotly | 6.1.2 |
-| **AI Integration** | Claude API | Sonnet 4 |
-| **HTTP Requests** | Requests | 2.32.4 |
+| **LLM Integration** | Claude API | Sonnet 4 |
+| **HTTP Requests (Claude)** | Requests | 2.32.4 |
 | **Environment Management** | python-dotenv | 1.0.0 |
 
 ## 📦 Installation
@@ -148,13 +148,6 @@ EXPOSE 8501
 CMD ["streamlit", "run", "streamlit_app.py", "--server.address=0.0.0.0"]
 ```
 
-### Cloud Deployment Options
-
-- **Streamlit Cloud**: Direct GitHub integration
-- **Heroku**: Web app hosting
-- **AWS/GCP/Azure**: Container deployment
-- **Railway/Render**: Modern deployment platforms
-
 ## 🧪 Testing
 
 ```bash
@@ -167,21 +160,6 @@ python -c "from schema_generator import test_claude_connection; test_claude_conn
 # Validate data loading
 python -c "from data_loader import load_data_file; print('Data loader working!')"
 ```
-
-## 📈 Performance
-
-- **Data Processing**: Handles datasets up to 100MB efficiently
-- **Memory Optimization**: Polars for memory-efficient operations
-- **Caching**: Streamlit caching for improved response times
-- **Async Operations**: Non-blocking API calls where possible
-
-## 🔒 Security
-
-- ✅ API keys stored in environment variables
-- ✅ Input validation and sanitization
-- ✅ File upload size limits
-- ✅ Error handling without information disclosure
-- ✅ No sensitive data logging
 
 ## 🤝 Contributing
 
@@ -197,9 +175,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Made with ❤️ by [Your Name]** | **Powered by Claude AI & Streamlit**
-
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.45.1-red.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
-![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg)
