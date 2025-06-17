@@ -1,4 +1,4 @@
-# Streamlit Scavenger AI 🔍
+# Streamlit Scavenger AI 
 
 **Production-Ready Data Analysis & Schema Generation Tool**
 
