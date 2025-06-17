@@ -273,76 +273,165 @@ def show_dataset_info(data, filename, show_preview=False):
 
 
 def create_missing_data_chart(df: pl.DataFrame):
-    """Create an interactive missing data visualization"""
-    # Calculate missing data percentages
+    """Create a polished, interactive missing data visualization"""
+    # Calculate missing data percentages with additional metrics
     missing_data = []
+    total_rows = df.shape[0]
+    
     for col in df.columns:
         missing_count = df[col].null_count()
-        missing_pct = (missing_count / df.shape[0]) * 100
+        missing_pct = (missing_count / total_rows) * 100
+        complete_count = total_rows - missing_count
+        
+        # Categorize data quality
+        if missing_pct == 0:
+            quality = "Complete"
+        elif missing_pct < 10:
+            quality = "Excellent"
+        elif missing_pct < 25:
+            quality = "Good"
+        elif missing_pct < 50:
+            quality = "Fair"
+        elif missing_pct < 90:
+            quality = "Poor"
+        else:
+            quality = "Critical"
+        
         missing_data.append({
             'Column': col,
             'Missing_Percentage': missing_pct,
-            'Missing_Count': missing_count
+            'Missing_Count': missing_count,
+            'Complete_Count': complete_count,
+            'Quality': quality
         })
     
     # Convert to pandas for plotting
     missing_df = pl.DataFrame(missing_data).to_pandas()
-    missing_df = missing_df.sort_values('Missing_Percentage', ascending=False)
+    missing_df = missing_df.sort_values('Missing_Percentage', ascending=True)  # Ascending for better visual flow
     
-    # Determine layout based on number of columns
+    # Determine layout and styling based on number of columns
     num_columns = len(df.columns)
     
+    # Create custom color scale based on data quality
+    color_scale = [
+        [0.0, "#2E8B57"],    # Complete - Sea green
+        [0.1, "#32CD32"],    # Excellent - Lime green  
+        [0.25, "#FFD700"],   # Good - Gold
+        [0.5, "#FF8C00"],    # Fair - Dark orange
+        [0.75, "#FF4500"],   # Poor - Orange red
+        [1.0, "#DC143C"]     # Critical - Crimson
+    ]
+    
     if num_columns > 20:
-        # Horizontal bar chart for many columns
+        # Enhanced horizontal bar chart for many columns
         fig = px.bar(
             missing_df,
             x='Missing_Percentage',
             y='Column',
             orientation='h',
-            title=f'Missing Data Analysis ({num_columns} columns)',
-            labels={'Missing_Percentage': 'Missing Data (%)', 'Column': 'Columns'},
             color='Missing_Percentage',
-            color_continuous_scale='Reds',
-            height=max(400, num_columns * 20)
+            color_continuous_scale=color_scale,
+            hover_data={
+                'Missing_Count': True,
+                'Complete_Count': True,
+                'Quality': True,
+                'Missing_Percentage': ':.1f'
+            },
+            height=max(600, num_columns * 15),
+            title=f'📊 Data Completeness Analysis - {num_columns} columns × {total_rows:,} rows'
         )
+        
+        # Enhanced layout for horizontal chart
         fig.update_layout(
-            yaxis={'categoryorder': 'total ascending'},
-            showlegend=False
+            yaxis={
+                'categoryorder': 'total ascending',
+                'title': {'text': 'Columns', 'font': {'size': 14}},
+                'tickfont': {'size': 10}
+            },
+            xaxis={
+                'title': {'text': 'Missing Data (%)', 'font': {'size': 14}},
+                'tickfont': {'size': 12},
+                'gridcolor': 'rgba(128,128,128,0.2)'
+            },
+            showlegend=False,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font={'family': 'Arial, sans-serif'},
+            margin={'l': 120, 'r': 80, 't': 100, 'b': 80}
         )
+        
+        # Add reference lines
+        fig.add_vline(x=10, line_width=1, line_dash="dash", line_color="green", 
+                     annotation_text="Good (10%)", annotation_position="top")
+        fig.add_vline(x=25, line_width=1, line_dash="dash", line_color="orange", 
+                     annotation_text="Fair (25%)", annotation_position="top")
+        fig.add_vline(x=50, line_width=1, line_dash="dash", line_color="red", 
+                     annotation_text="Poor (50%)", annotation_position="top")
+        
     else:
-        # Vertical bar chart for fewer columns
+        # Enhanced vertical bar chart for fewer columns
         fig = px.bar(
             missing_df,
             x='Column',
             y='Missing_Percentage',
-            title=f'Missing Data Analysis ({num_columns} columns)',
-            labels={'Missing_Percentage': 'Missing Data (%)', 'Column': 'Columns'},
             color='Missing_Percentage',
-            color_continuous_scale='Reds'
+            color_continuous_scale=color_scale,
+            hover_data={
+                'Missing_Count': True,
+                'Complete_Count': True,
+                'Quality': True,
+                'Missing_Percentage': ':.1f'
+            },
+            height=500,
+            title=f'📊 Data Completeness Analysis - {num_columns} columns × {total_rows:,} rows'
         )
+        
+        # Enhanced layout for vertical chart
         fig.update_layout(
-            xaxis_tickangle=-45,
-            showlegend=False
+            xaxis={
+                'title': {'text': 'Columns', 'font': {'size': 14}},
+                'tickangle': -45,
+                'tickfont': {'size': 10}
+            },
+            yaxis={
+                'title': {'text': 'Missing Data (%)', 'font': {'size': 14}},
+                'tickfont': {'size': 12},
+                'gridcolor': 'rgba(128,128,128,0.2)'
+            },
+            showlegend=False,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font={'family': 'Arial, sans-serif'},
+            margin={'l': 80, 'r': 80, 't': 100, 'b': 120}
         )
+        
+        # Add reference lines
+        fig.add_hline(y=10, line_width=1, line_dash="dash", line_color="green", 
+                     annotation_text="Good (10%)", annotation_position="right")
+        fig.add_hline(y=25, line_width=1, line_dash="dash", line_color="orange", 
+                     annotation_text="Fair (25%)", annotation_position="right")
+        fig.add_hline(y=50, line_width=1, line_dash="dash", line_color="red", 
+                     annotation_text="Poor (50%)", annotation_position="right")
     
-    # Add annotations for high missing values
-    for idx, row in missing_df.iterrows():
-        if row['Missing_Percentage'] > 50:
-            if num_columns > 20:
-                fig.add_annotation(
-                    x=row['Missing_Percentage'],
-                    y=row['Column'],
-                    text=f"{row['Missing_Percentage']:.1f}%",
-                    showarrow=True,
-                    arrowhead=2
-                )
-            else:
-                fig.add_annotation(
-                    x=row['Column'],
-                    y=row['Missing_Percentage'],
-                    text=f"{row['Missing_Percentage']:.1f}%",
-                    showarrow=True,
-                    arrowhead=2
-                )
+    # Enhance hover template
+    hover_template = (
+        "<b>%{customdata[0]}</b><br>"
+        "Missing: %{y:.1f}% (%{customdata[1]:,} rows)<br>"
+        "Complete: %{customdata[2]:,} rows<br>"
+        "Quality: %{customdata[3]}<br>"
+        "<extra></extra>"
+    )
+    
+    # Update hover info with custom data
+    fig.update_traces(
+        customdata=missing_df[['Column', 'Missing_Count', 'Complete_Count', 'Quality']].values,
+        hovertemplate=hover_template if num_columns <= 20 else (
+            "<b>%{y}</b><br>"
+            "Missing: %{x:.1f}% (%{customdata[1]:,} rows)<br>"
+            "Complete: %{customdata[2]:,} rows<br>"
+            "Quality: %{customdata[3]}<br>"
+            "<extra></extra>"
+        )
+    )
     
     return fig
