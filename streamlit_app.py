@@ -56,7 +56,7 @@ def main():
     model_name = get_current_claude_model()
     
     # Header
-    st.markdown('<div class="main-header">Scavenger AI: From CSV to Schema in Seconds</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">From CSV to Schema in Seconds</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Automated Schema & Column Documentation Generator for MySQL</div>', unsafe_allow_html=True)
     
     # Model indicator
