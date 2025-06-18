@@ -195,7 +195,7 @@ def call_claude_api_robust(prompt: str, max_retries: int = 3, model: str = "clau
             else:
                 print(f"⚠️ Attempt {attempt + 1}: Could not find JSON in Claude response")
                 if attempt == max_retries - 1:
-                    print(f"Raw content preview: {content[:200]}...")
+                    print(f"Raw content preview: {content[:400]}...")
                     return None
                     
         except requests.exceptions.Timeout:
@@ -522,7 +522,7 @@ def generate_descriptions_only(df: pl.DataFrame, table_name: str, sample_size: i
 1. **BE DEFINITIVE**: Use confident, assertive language
 2. **BUSINESS PURPOSE**: Focus on why this data matters to the business
 3. **NO SPECULATION**: Avoid "likely", "may", "appears", "needs investigation"
-4. **CONCISE**: 80-200 characters per description
+4. **CONCISE**: 80-400 characters per description
 5. **ACTIONABLE**: Explain how this data supports business decisions
 
 ### General Guidelines:
@@ -538,7 +538,7 @@ def generate_descriptions_only(df: pl.DataFrame, table_name: str, sample_size: i
       "sql_type": "MySQL-compatible type",
       "nullable": true/false,
       "examples": [actual_samples],
-      "description": "Definitive business explanation (80-200 chars)"
+      "description": "Definitive business explanation (80-400 chars)"
     }}
   }}
 }}
