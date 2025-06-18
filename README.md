@@ -8,7 +8,7 @@ A powerful AI-driven application that automatically analyzes datasets and genera
 
 - **📊 Smart Data Analysis**: Automated dataset structure analysis with missing data detection
 - **🤖 AI-Powered Schema Generation**: Generate optimized database schemas using Claude Sonnet 4
-- **📈 Interactive Visualizations**: Beautiful charts and graphs using Plotly
+- **📈 Interactive Visualizations**: Charts and graphs using Plotly
 - **⚡ High-Performance Processing**: Lightning-fast data processing with Polars
 - **🎨 Modern UI**: Clean, responsive interface with custom styling
 - **🔒 Secure Configuration**: Environment-based API key management
